@@ -1,0 +1,123 @@
+name: Fooocus
+run-name: "Fooocus ${{ inputs.tf-destroy && 'destroy' || 'apply' }}"
+
+on:
+  workflow_dispatch:
+    inputs:
+      skip-apply:
+        type: boolean
+        default: false
+        description: "Skip Apply"
+      tf-destroy:
+        type: boolean
+        default: false
+        description: "Destroy"
+
+
+concurrency: tailscale_${{ github.ref }}
+
+jobs:
+  plan:
+    environment:
+      name: sandbox
+      url: ${{ steps.url.outputs.ec2_page }}
+    runs-on: ubuntu-latest
+    name: Terraform plan
+    permissions:
+      id-token: write
+      contents: read
+    env:
+      TAILSCALE_OAUTH_CLIENT_ID: ${{ secrets.TAILSCALE_OAUTH_CLIENT_ID }}
+      TAILSCALE_OAUTH_CLIENT_SECRET: ${{ secrets.TAILSCALE_OAUTH_CLIENT_SECRET }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v3
+        with:
+          fetch-depth: 1
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v2
+        with:
+          role-to-assume: ${{ secrets.AWS_ASSUME_ROLE_ARN }}
+          role-session-name: git-${{ github.sha }}
+          aws-region: ap-south-1
+
+      - name: Setting up terraform
+        uses: hashicorp/setup-terraform@v2
+        with:
+          terraform_version: 1.6.6
+          terraform_wrapper: false # Needed this to parse output https://github.com/jqlang/jq/issues/2287
+
+      - name: Restore cache
+        uses: actions/cache@v3
+        with:
+          path: |
+            infra/terraform/.terraform
+            infra/terraform/.terraform.lock.hcl
+          key: infra-terraform-${{ github.sha }}
+          restore-keys: |
+            infra-terraform-
+
+      - name: Init
+        id: init
+        working-directory: infra/terraform
+        run: terraform init -no-color
+
+      - name: Init, fmt, validation summary
+        if: failure() == false && cancelled() == false
+        run: |
+          echo '{{ steps.init.outputs.stdout }}' # this fails if stdout has single quotes in it
+          {
+            echo -e '#### Terraform Initialization ⚙️ ${{ steps.init.outcome }}\n'
+            echo '<details>'
+            echo '<summary>Initialization Output</summary>'
+            echo -e '\n```'
+            echo '```'
+            echo -e '</details>\n'
+          } >> $GITHUB_STEP_SUMMARY
+
+      - name: Apply
+        id: apply
+        if: inputs.skip-apply == false && inputs.tf-destroy == false
+        working-directory: infra/terraform
+        run: terraform apply -auto-approve -no-color -input=false
+
+      - name: Apply summary
+        if: inputs.skip-apply == false && inputs.tf-destroy == false
+        run: |
+          echo '{{ steps.apply.outputs.stdout }}' # this fails if stdout has single quotes in it
+
+          {
+            echo -e '#### Terraform Apply 🐢${{ steps.apply.outcome }}\n'
+            echo '<details>'
+            echo '<summary>Show Apply</summary>'
+            echo -e '\n```terraform'
+            echo '```'
+            echo '</details>'
+          } >> $GITHUB_STEP_SUMMARY
+
+      - name: Environment Url
+        id: url
+        working-directory: infra/terraform
+        run: |
+          instance_id=$(terraform output --json | jq -r '.ec2.value.instance_id')
+          echo "ec2_page=https://${AWS_REGION}.console.aws.amazon.com/ec2/home?region=${AWS_REGION}#InstanceDetails:instanceId=${instance_id}" >> $GITHUB_OUTPUT
+
+      - name: Destroy
+        id: destroy
+        if: inputs.tf-destroy
+        working-directory: infra/terraform
+        run: terraform destroy -auto-approve -no-color -input=false
+
+      - name: Destroy summary
+        if: inputs.tf-destroy
+        run: |
+          echo '{{ steps.destroy.outputs.stdout }}' # this fails if stdout has single quotes in it
+          {
+            echo -e '#### Terraform Destroy ♻️${{ steps.destroy.outcome }}\n'
+            echo '<details>'
+            echo '<summary>Show Destroy</summary>'
+            echo -e '\n```terraform'
+            echo '```'
+            echo '</details>'
+          } >> $GITHUB_STEP_SUMMARY
