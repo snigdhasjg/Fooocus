@@ -2,7 +2,7 @@ name: fooocus
 channels:
   - defaults
   - pytorch
-  - nvidia
+  - nvidia/label/cuda-11.7.1
 dependencies:
   - python=3.10
   - pip=23.0
