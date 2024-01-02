@@ -19,12 +19,20 @@ data "aws_subnets" "public-subnets" {
       "public"
     ]
   }
+
+  filter {
+    name = "tag:zone"
+
+    values = [
+      "c"
+    ]
+  }
 }
 
 data "aws_ami" "amz_linux" {
   most_recent = true
   owners      = ["amazon"]
-  name_regex  = "^Deep Learning Proprietary Nvidia Driver AMI GPU PyTorch 1\\.13\\.1 \\(Amazon Linux 2\\) \\d{8}$"
+  name_regex  = "^al2023-ami-[\\d\\.]+-kernel-6.1-x86_64"
 
   filter {
     name   = "architecture"
