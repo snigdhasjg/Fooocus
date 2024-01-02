@@ -79,7 +79,7 @@ resource "aws_instance" "this" {
   instance_type                        = "g4dn.xlarge"
   key_name                             = aws_key_pair.ec2_key.key_name
   subnet_id                            = data.aws_subnets.public-subnets.ids[0]
-  instance_initiated_shutdown_behavior = "terminate"
+  # instance_initiated_shutdown_behavior = "terminate" # Not supported for spot
   iam_instance_profile                 = aws_iam_instance_profile.ec2_profile.name
   associate_public_ip_address          = true
   user_data_replace_on_change          = false # This is to ensure tailscale key creation doesn't re-create ec2
