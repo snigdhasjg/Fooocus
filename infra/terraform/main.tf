@@ -84,6 +84,15 @@ resource "aws_instance" "this" {
   associate_public_ip_address          = true
   user_data_replace_on_change          = false # This is to ensure tailscale key creation doesn't re-create ec2
 
+  # Spot pricing: https://aws.amazon.com/ec2/spot/pricing/
+  # On demand pricing: https://aws.amazon.com/ec2/pricing/on-demand/
+  instance_market_options {
+    market_type = "spot"
+    spot_options {
+      max_price = 0.300
+    }
+  }
+
   user_data = <<-EOF
     #!/bin/bash
     curl -fsSL https://tailscale.com/install.sh | sh
