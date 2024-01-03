@@ -29,6 +29,10 @@ data "aws_subnets" "public-subnets" {
   }
 }
 
+data "aws_subnet" "public_subnet" {
+  id       = data.aws_subnets.public-subnets.ids[0]
+}
+
 data "aws_ami" "amz_linux" {
   most_recent = true
   owners      = ["amazon"]

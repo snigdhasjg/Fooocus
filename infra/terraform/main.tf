@@ -74,15 +74,27 @@ resource "tailscale_tailnet_key" "ec2-tailscale-key" {
   ]
 }
 
+resource "aws_ebs_volume" "swap_space" {
+  availability_zone = data.aws_subnet.public_subnet.availability_zone
+  size              = 50
+  type              = "gp3"
+}
+
+resource "aws_volume_attachment" "swap_space_attachment" {
+  device_name = "/dev/xvdh"
+  volume_id   = aws_ebs_volume.swap_space.id
+  instance_id = aws_instance.this.id
+}
+
 resource "aws_instance" "this" {
-  ami                                  = data.aws_ami.amz_linux.id
-  instance_type                        = "g4dn.xlarge"
-  key_name                             = aws_key_pair.ec2_key.key_name
-  subnet_id                            = data.aws_subnets.public-subnets.ids[0]
+  ami                         = data.aws_ami.amz_linux.id
+  instance_type               = "g4dn.xlarge"
+  key_name                    = aws_key_pair.ec2_key.key_name
+  subnet_id                   = data.aws_subnet.public_subnet.id
   # instance_initiated_shutdown_behavior = "terminate" # Not supported for spot
-  iam_instance_profile                 = aws_iam_instance_profile.ec2_profile.name
-  associate_public_ip_address          = true
-  user_data_replace_on_change          = false # This is to ensure tailscale key creation doesn't re-create ec2
+  iam_instance_profile        = aws_iam_instance_profile.ec2_profile.name
+  associate_public_ip_address = true
+  user_data_replace_on_change = false # This is to ensure tailscale key creation doesn't re-create ec2
 
   # Spot pricing: https://aws.amazon.com/ec2/spot/pricing/
   # On demand pricing: https://aws.amazon.com/ec2/pricing/on-demand/
