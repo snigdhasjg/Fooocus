@@ -55,7 +55,13 @@ resource "aws_iam_role" "ec2_service_role" {
   managed_policy_arns = [
     "arn:aws:iam::aws:policy/AmazonSSMManagedInstanceCore"
   ]
+
+  inline_policy {
+    name = "fooocus-ec2-permission"
+    policy = data.aws_iam_policy_document.ec2_role_policy.json
+  }
 }
+
 
 resource "aws_iam_instance_profile" "ec2_profile" {
   name = "fooocus-ec2-service-role-instance-profile"
@@ -107,6 +113,7 @@ resource "aws_instance" "this" {
 
   user_data = <<-EOF
     #!/bin/bash
+    # Setting tailscale
     curl -fsSL https://tailscale.com/install.sh | sh
 
     tailscale up \
@@ -119,17 +126,22 @@ resource "aws_instance" "this" {
     echo 'net.ipv4.ip_forward = 1' | tee -a /etc/sysctl.d/99-tailscale.conf
     echo 'net.ipv6.conf.all.forwarding = 1' | tee -a /etc/sysctl.d/99-tailscale.conf
     sysctl -p /etc/sysctl.d/99-tailscale.conf
+
+    tailscale serve --bg 7865
+
+    # Make swap volume
+    mkswap /dev/nvme1n1
+    swapon /dev/nvme1n1
+
+    # Updating conda
+    conda env remove -n pytorch
+    conda update --all -y
+    conda update -n base -c conda-forge conda -y
   EOF
 
   root_block_device {
     volume_type = "gp3"
     volume_size = 80
-  }
-
-  ebs_block_device {
-    device_name = "/dev/xvdh"
-    volume_type = "gp3"
-    volume_size = 40
   }
 
   vpc_security_group_ids = [

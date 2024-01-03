@@ -55,3 +55,19 @@ data "aws_ami" "amz_linux" {
     values = [true]
   }
 }
+
+data "aws_iam_policy_document" "ec2_role_policy" {
+  statement {
+    sid = "AllowManagingS3Access"
+    effect = "Allow"
+
+    actions = [
+      "s3:*"
+    ]
+
+    resources = [
+      "arn:aws:s3:::joe-sandbox-fooocus",
+      "arn:aws:s3:::joe-sandbox-fooocus/*"
+    ]
+  }
+}
