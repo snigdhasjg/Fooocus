@@ -74,17 +74,17 @@ resource "tailscale_tailnet_key" "ec2-tailscale-key" {
   ]
 }
 
-resource "aws_ebs_volume" "swap_space" {
-  availability_zone = data.aws_subnet.public_subnet.availability_zone
-  size              = 50
-  type              = "gp3"
-}
-
-resource "aws_volume_attachment" "swap_space_attachment" {
-  device_name = "/dev/xvdh"
-  volume_id   = aws_ebs_volume.swap_space.id
-  instance_id = aws_instance.this.id
-}
+#resource "aws_ebs_volume" "swap_space" {
+#  availability_zone = data.aws_subnet.public_subnet.availability_zone
+#  size              = 40
+#  type              = "gp3"
+#}
+#
+#resource "aws_volume_attachment" "swap_space_attachment" {
+#  device_name = "/dev/xvdh"
+#  volume_id   = aws_ebs_volume.swap_space.id
+#  instance_id = aws_instance.this.id
+#}
 
 resource "aws_instance" "this" {
   ami                         = data.aws_ami.amz_linux.id
@@ -123,7 +123,13 @@ resource "aws_instance" "this" {
 
   root_block_device {
     volume_type = "gp3"
-    volume_size = 100
+    volume_size = 80
+  }
+
+  ebs_block_device {
+    device_name = "/dev/xvdh"
+    volume_type = "gp3"
+    volume_size = 40
   }
 
   vpc_security_group_ids = [

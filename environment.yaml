@@ -1,13 +1,7 @@
 name: fooocus
 channels:
   - defaults
-  - pytorch
-  - nvidia
 dependencies:
   - python=3.10
   - pip=23.0
   - packaging
-  - pytorch==1.13.1
-  - torchvision==0.14.1
-  - torchaudio==0.13.1
-  - pytorch-cuda=11.7
